@@ -36,7 +36,8 @@ const Login = () => {
     'Architecture', 
     'Food Technology and Biochemical Engineering',
     'Printing Technology', 
-    'Pharmaceutical Technology'
+    'Pharmaceutical Technology',
+    'Dummy( Dear JU students this is only like a trial for other university students, so please ignore this option :) )'
   ];
   
   const sections = ['A', 'B', 'C', 'D'];
