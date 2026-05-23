@@ -1,30 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../Context/AuthContext';
-import io from 'socket.io-client';
 import axios from 'axios';
-import { FaPaperPlane, FaArrowLeft, FaSignOutAlt, FaImage } from 'react-icons/fa';
-
-const Chat = () => {
-  const { room } = useParams();
-  const navigate = useNavigate();
-  const { user, token, logout } = useAuth();
-  const [messages, setMessages] = useState([]);
-  const [newMessage, setNewMessage] = useState('');
-  const [socket, setSocket] = useState(null);
-  const [isConnected, setIsConnected] = useState(false);
-  const messagesEndRef = useRef(null);
-
-  // ✅ IMPORTANT: Use environment variable
-  const BACKEND_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-
-  useEffect(() => {
-    if (!token || !user) {import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { useAuth } from '../Context/AuthContext';
-import io from 'socket.io-client';
-import axios from 'axios';
-import { FaPaperPlane, FaArrowLeft, FaSignOutAlt, FaImage, FaSmile, FaPaperclip } from 'react-icons/fa';
+import { FaPaperPlane, FaArrowLeft, FaSignOutAlt, FaImage, FaSmile } from 'react-icons/fa';
 import EmojiPicker from 'emoji-picker-react';
 
 const Chat = () => {
@@ -33,89 +11,71 @@ const Chat = () => {
   const { user, token, logout } = useAuth();
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
-  const [socket, setSocket] = useState(null);
-  const [isConnected, setIsConnected] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
+  const [isConnected, setIsConnected] = useState(true); // Always connected
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const fileInputRef = useRef(null);
 
   const BACKEND_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
+  // Load messages
   useEffect(() => {
     if (!token || !user) {
       navigate('/login');
       return;
     }
-
-    // Load messages with AUTH TOKEN
-    axios.get(`${BACKEND_URL}/api/chat/messages/${room}`, {
-      headers: { 'x-auth-token': token }
-    })
-    .then(res => {
-      setMessages(res.data);
-    })
-    .catch(err => {
-      console.error('Failed to load messages:', err);
-    });
-
-    // Connect to socket
-    const newSocket = io(BACKEND_URL, {
-      transports: ['websocket', 'polling'],
-      reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000
-    });
-    setSocket(newSocket);
-
-    newSocket.on('connect', () => {
-      console.log('✅ Socket connected to:', BACKEND_URL);
-      setIsConnected(true);
-      newSocket.emit('join-room', room);
-    });
-
-    newSocket.on('disconnect', () => {
-      console.log('❌ Socket disconnected');
-      setIsConnected(false);
-    });
-
-    newSocket.on('connect_error', (error) => {
-      console.log('❌ Socket error:', error.message);
-      setIsConnected(false);
-    });
-
-    newSocket.on('receive-message', (message) => {
-      setMessages(prev => [...prev, message]);
-    });
-
-    return () => {
-      newSocket.close();
-    };
+    fetchMessages();
+    
+    // Poll for new messages every 3 seconds
+    const interval = setInterval(() => {
+      fetchMessages();
+    }, 3000);
+    
+    return () => clearInterval(interval);
   }, [room, token, user, navigate]);
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  const fetchMessages = async () => {
+    try {
+      const res = await axios.get(`${BACKEND_URL}/api/chat/messages/${room}`, {
+        headers: { 'x-auth-token': token }
+      });
+      setMessages(res.data);
+    } catch (err) {
+      console.error('Failed to load messages:', err);
+    }
+  };
 
-  // Send text message
-  const sendMessage = (e) => {
+  // Send message
+  const sendMessage = async (e) => {
     e.preventDefault();
-    if (!newMessage.trim() || !socket || !isConnected) {
-      console.log('Cannot send: socket not connected');
+    
+    if (selectedFile) {
+      await uploadImage();
       return;
     }
     
-    socket.emit('send-message', {
-      senderId: user.id,
-      text: newMessage,
-      room: room,
-      messageType: 'text'
-    });
-    setNewMessage('');
-    inputRef.current?.focus();
+    if (!newMessage.trim()) return;
+    
+    try {
+      await axios.post(`${BACKEND_URL}/api/chat/send`, {
+        senderId: user.id,
+        text: newMessage,
+        room: room
+      }, {
+        headers: { 'x-auth-token': token }
+      });
+      
+      setNewMessage('');
+      inputRef.current?.focus();
+      fetchMessages(); // Refresh messages
+    } catch (err) {
+      console.error('Failed to send message:', err);
+      alert('Failed to send message');
+    }
   };
 
   // Handle emoji selection
@@ -130,21 +90,17 @@ const Chat = () => {
     const file = e.target.files[0];
     if (!file) return;
     
-    // Check file type
     if (!file.type.startsWith('image/')) {
       alert('Only image files are allowed');
       return;
     }
     
-    // Check file size (5MB max)
     if (file.size > 5 * 1024 * 1024) {
       alert('Image must be less than 5MB');
       return;
     }
     
     setSelectedFile(file);
-    
-    // Create preview
     const reader = new FileReader();
     reader.onloadend = () => {
       setPreviewUrl(reader.result);
@@ -160,24 +116,13 @@ const Chat = () => {
     const formData = new FormData();
     formData.append('file', selectedFile);
     formData.append('room', room);
-    formData.append('text', '');
     
     try {
-      const res = await axios.post(`${BACKEND_URL}/api/chat/upload`, formData, {
+      await axios.post(`${BACKEND_URL}/api/chat/upload`, formData, {
         headers: { 
           'x-auth-token': token,
           'Content-Type': 'multipart/form-data'
         }
-      });
-      
-      // Send image message via socket
-      socket.emit('send-message', {
-        senderId: user.id,
-        text: '',
-        room: room,
-        messageType: 'image',
-        fileUrl: res.data.fileUrl,
-        fileName: res.data.fileName
       });
       
       setSelectedFile(null);
@@ -185,9 +130,10 @@ const Chat = () => {
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
+      fetchMessages(); // Refresh to show new image
     } catch (err) {
       console.error('Upload failed:', err);
-      alert('Upload failed: ' + (err.response?.data?.msg || err.message));
+      alert('Upload failed');
     } finally {
       setUploading(false);
     }
@@ -202,9 +148,6 @@ const Chat = () => {
   };
 
   const handleLogout = () => {
-    if (socket) {
-      socket.close();
-    }
     logout();
     navigate('/login');
   };
@@ -263,15 +206,11 @@ const Chat = () => {
             <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold">
               {formatRoomName(room).charAt(0).toUpperCase()}
             </div>
-            {isConnected && (
-              <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
-            )}
+            <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
           </div>
           <div>
             <h1 className="font-bold text-gray-800">{formatRoomName(room)}</h1>
-            <p className="text-xs text-gray-500">
-              {isConnected ? 'Online' : 'Connecting...'}
-            </p>
+            <p className="text-xs text-green-500 font-medium">Online</p>
           </div>
         </div>
         <button 
@@ -433,10 +372,11 @@ const Chat = () => {
           />
           
           {/* Send Button */}
-          {newMessage.trim() && !selectedFile ? (
+          {(newMessage.trim() || selectedFile) ? (
             <button 
               type="submit" 
               className="p-3 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition shadow-md"
+              disabled={uploading}
             >
               <FaPaperPlane size={16} />
             </button>
@@ -456,64 +396,3 @@ const Chat = () => {
 };
 
 export default Chat;
-      navigate('/login');
-      return;
-    }
-
-    // ✅ Connect to the SAME backend URL
-    const newSocket = io(BACKEND_URL, {
-      transports: ['websocket', 'polling'],
-      reconnection: true,
-      reconnectionAttempts: 5
-    });
-    
-    setSocket(newSocket);
-    
-    newSocket.on('connect', () => {
-      console.log('✅ Socket connected to:', BACKEND_URL);
-      setIsConnected(true);
-      newSocket.emit('join-room', room);
-    });
-    
-    newSocket.on('disconnect', () => {
-      console.log('❌ Socket disconnected');
-      setIsConnected(false);
-    });
-    
-    newSocket.on('connect_error', (error) => {
-      console.log('❌ Socket error:', error.message);
-      setIsConnected(false);
-    });
-    
-    // Load messages
-    axios.get(`${BACKEND_URL}/api/chat/messages/${room}`, {
-      headers: { 'x-auth-token': token }
-    }).then(res => {
-      setMessages(res.data);
-    }).catch(err => {
-      console.error('Failed to load messages:', err);
-    });
-    
-    newSocket.on('receive-message', (message) => {
-      setMessages(prev => [...prev, message]);
-    });
-    
-    return () => {
-      newSocket.close();
-    };
-  }, [room, token, user, navigate]);
-
-  const sendMessage = (e) => {
-    e.preventDefault();
-    if (!newMessage.trim() || !socket || !isConnected) return;
-    
-    socket.emit('send-message', {
-      senderId: user.id,
-      text: newMessage,
-      room: room
-    });
-    setNewMessage('');
-  };
-
-  // ... rest of your component
-};
