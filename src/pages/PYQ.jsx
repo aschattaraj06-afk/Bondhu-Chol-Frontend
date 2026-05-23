@@ -23,7 +23,7 @@ const PYQ = () => {
     file: null
   });
 
-  const BACKEND_URL = 'http://192.168.1.8:5000';
+  const BACKEND_URL = 'https://bandhu-chol-backend.onrender.com';
 
   useEffect(() => {
     if (!token || !user) {

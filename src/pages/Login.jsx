@@ -18,7 +18,7 @@ const Login = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
 
-  const BACKEND_URL = 'http://192.168.1.8:5000';
+  const BACKEND_URL = 'https://bandhu-chol-backend.onrender.com';
 
   const departments = [
     'Computer Science and Engineering', 
