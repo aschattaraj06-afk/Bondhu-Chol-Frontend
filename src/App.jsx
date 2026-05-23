@@ -8,7 +8,7 @@ import Notes from './pages/Notes';
 import Syllabus from './pages/Syllabus';
 import PYQ from './pages/PYQ';
 import Map from './pages/Map';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider } from './Context/AuthContext';
 
 function App() {
   const audioRef = useRef(null);
