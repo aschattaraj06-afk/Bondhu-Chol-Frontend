@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../Context/AuthContext';
 import { 
   FaArrowLeft, FaMapMarkerAlt, FaBuilding, FaUtensils, 
   FaBook, FaHospital, FaSignOutAlt, FaSearch, FaTimes,
@@ -8,7 +8,6 @@ import {
   FaExternalLinkAlt, FaLayerGroup, FaTrain, FaSubway,
   FaBed, FaFutbol, FaSchool, FaFlask, FaMicrochip
 } from 'react-icons/fa';
-
 const Map = () => {
   const navigate = useNavigate();
   const { user, token, logout } = useAuth();

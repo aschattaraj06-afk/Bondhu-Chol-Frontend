@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../Context/AuthContext';
 import { 
   FaHome, FaComments, FaBook, FaCalendarAlt, 
   FaFileAlt, FaMapMarkedAlt, FaUsers, FaSignOutAlt,
